@@ -109,6 +109,14 @@ namespace CommentService.API.Controllers
                 return Unauthorized();
             }
 
+            // Kullanıcı aynı tarife 5'ten fazla yorum ekleyemesin
+            var userCommentCount = (await _repository.GetByRecipeIdAsync(comment.RecipeId)).Count(c => c.UserId == userId);
+            if (userCommentCount >= 5)
+            {
+                _logger.Warning("AddComment failed - User has already added 5 comments to this recipe. RecipeId: {RecipeId}, UserId: {UserId}", comment.RecipeId, userId);
+                return BadRequest("Bir tarife en fazla 5 yorum ekleyebilirsiniz.");
+            }
+
             try
             {
                 comment.UserId = userId;
@@ -145,6 +153,26 @@ namespace CommentService.API.Controllers
                 await _cacheService.RemoveByPatternAsync($"comments:count:{comment.RecipeId}");
                 await _cacheService.RemoveByPatternAsync($"comments:user:{userId}");
                 await _cacheService.RemoveByPatternAsync("comments:popular");
+
+                // RecipeService'e yorum sayısını artırması için istek gönder
+                try
+                {
+                    var recipeServiceUrl = $"http://localhost:7241/api/Recipes/{comment.RecipeId}/comment";
+                    var response = await _httpClient.PostAsync(recipeServiceUrl, null);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        _logger.Information("Comment count incremented in RecipeService - RecipeId: {RecipeId}", comment.RecipeId);
+                    }
+                    else
+                    {
+                        _logger.Warning("Failed to increment comment count in RecipeService - RecipeId: {RecipeId}, Status: {Status}", 
+                            comment.RecipeId, response.StatusCode);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error incrementing comment count in RecipeService - RecipeId: {RecipeId}", comment.RecipeId);
+                }
 
                 _publisher.PublishNewComment(comment);
 

@@ -10,6 +10,7 @@ import RecipeDetailPage from "./pages/RecipeDetailPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
 import React from "react";
+import Footer from './components/Footer';
 
 function App() {
   return (
@@ -25,9 +26,11 @@ function App() {
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/recipes/add" element={<ProtectedRoute><RecipeAddPage /></ProtectedRoute>} />
             <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="/recipes" element={<RecipeListPage />} />
           </Routes>
         </div>
       </div>
+      <Footer />
     </BrowserRouter>
   );
 }

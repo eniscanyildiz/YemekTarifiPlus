@@ -9,6 +9,8 @@ namespace RecipeService.API.Data
 
         public DbSet<Recipe> Recipes => Set<Recipe>();
         public DbSet<Category> Categories => Set<Category>();
+        public DbSet<RecipeView> RecipeViews => Set<RecipeView>();
+        public DbSet<RecipeLike> RecipeLikes => Set<RecipeLike>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

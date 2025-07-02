@@ -27,9 +27,9 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rose-100 to-orange-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-orange-100 via-orange-200 to-orange-300">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-        <div className="text-3xl font-extrabold text-rose-600 text-center mb-6">YemekTarifi+</div>
+        <div className="text-3xl font-extrabold text-rose-600 text-center mb-6">Tarifim.com</div>
         <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Kayıt Ol</h2>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>

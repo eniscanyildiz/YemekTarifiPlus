@@ -65,9 +65,10 @@ namespace MediaService.API.Services
                     HttpHeaders = blobHttpHeaders
                 });
 
-                var sasUrl = GetBlobSasUri(fileName, 60); // 60 dakika geçerli
-                _logger.Information("File uploaded successfully to blob storage - FileName: {FileName}, SAS Url: {Url}", fileName, sasUrl);
-                return sasUrl;
+                // SAS token olmadan public URL döndür
+                var publicUrl = blobClient.Uri.ToString();
+                _logger.Information("File uploaded successfully to blob storage - FileName: {FileName}, Public Url: {Url}", fileName, publicUrl);
+                return publicUrl;
             }
             catch (Exception ex)
             {

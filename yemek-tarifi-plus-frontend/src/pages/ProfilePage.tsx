@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 import axios from "../api/axios";
+import RecipeCard from "../components/RecipeCard";
+import type { Recipe } from "../types/recipe";
+import { getUserById } from "../api/auth";
 
 interface UserProfile {
   id: string;
@@ -9,26 +12,35 @@ interface UserProfile {
   lastName: string;
 }
 
-interface Recipe {
-  id: string;
-  title: string;
-  description: string;
-  media?: Array<{
-    url: string;
-    type: string;
-  }>;
-}
-
 const ProfilePage: React.FC = () => {
   const { token, email } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authorNames, setAuthorNames] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchProfile();
     fetchFavorites();
   }, []);
+
+  useEffect(() => {
+    // Favori tarifler değiştiğinde yazar adlarını çek
+    const fetchAuthors = async () => {
+      const ids = Array.from(new Set(favorites.map(r => r.authorId).filter(Boolean)));
+      const map: { [key: string]: string } = {};
+      await Promise.all(ids.map(async (id) => {
+        try {
+          const user = await getUserById(id!);
+          map[id!] = `${user.firstName} ${user.lastName}`;
+        } catch {
+          map[id!] = "";
+        }
+      }));
+      setAuthorNames(map);
+    };
+    if (favorites.length > 0) fetchAuthors();
+  }, [favorites]);
 
   const fetchProfile = async () => {
     try {
@@ -60,18 +72,36 @@ const ProfilePage: React.FC = () => {
       const favoriteRecipes = await Promise.all(
         response.data.map(async (recipeId: string) => {
           try {
-            console.log(`Tarif ${recipeId} alınıyor...`);
             const recipeResponse = await axios.get(`http://localhost:7241/api/Recipes/${recipeId}`);
-            console.log(`Tarif ${recipeId} alındı:`, recipeResponse.data);
-            return recipeResponse.data;
+            const r = recipeResponse.data;
+            // media tipini RecipeMedia ile uyumlu hale getir
+            const safeMedia = ((r.media || []).map((m: any) => ({
+              url: m.url,
+              type: m.type === "image" || m.type === "video" ? m.type as "image" | "video" : "image"
+            })) as import("../types/recipe").RecipeMedia[]);
+            return {
+              id: r.id,
+              title: r.title,
+              ingredients: r.ingredients || [],
+              steps: r.steps || [],
+              duration: r.duration || 0,
+              category: r.category || "",
+              mediaUrls: r.mediaUrls || [],
+              media: safeMedia,
+              viewCount: r.viewCount || 0,
+              likeCount: r.likeCount || 0,
+              commentCount: r.commentCount || 0,
+              popularityScore: r.popularityScore || 0,
+              authorId: r.authorId,
+              createdAt: r.createdAt,
+            };
           } catch (error) {
-            console.error(`Tarif ${recipeId} alınamadı:`, error);
             return null;
           }
         })
       );
       
-      const validRecipes = favoriteRecipes.filter(Boolean);
+      const validRecipes = favoriteRecipes.filter(Boolean) as Recipe[];
       console.log("Geçerli favori tarifler:", validRecipes);
       setFavorites(validRecipes);
     } catch (error) {
@@ -99,10 +129,10 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-rose-100 to-orange-100 py-4 lg:py-8 flex justify-center">
-      <div className="w-full max-w-md mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-gradient-to-r from-orange-100 via-orange-200 to-orange-300 py-4 lg:py-8 flex justify-center">
+      <div className="w-full max-w-6xl flex flex-col gap-8">
         {/* Profil Bilgileri */}
-        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center mb-4">
           <h2 className="text-2xl font-bold text-rose-600 mb-4">Profil</h2>
           <div className="w-28 h-28 rounded-full bg-rose-200 flex items-center justify-center text-4xl font-bold text-rose-700 mb-4">
             {profile?.firstName?.charAt(0)?.toUpperCase() || profile?.email?.charAt(0)?.toUpperCase() || "P"}
@@ -112,42 +142,25 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="text-gray-500 text-base">{profile?.email}</div>
         </div>
-
         {/* Favori Tarifler */}
-        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col">
+        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col min-h-[300px]">
           <h2 className="text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6">Favori Tariflerim</h2>
           {favorites.length === 0 ? (
-            <div className="text-center py-6 lg:py-8">
+            <div className="flex flex-col items-center justify-center flex-1 py-12">
               <p className="text-gray-500 text-base lg:text-lg">Henüz favori tarifiniz yok.</p>
               <p className="text-gray-400 text-sm lg:text-base">Tarifleri beğenerek favorilerinize ekleyebilirsiniz.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {favorites.map((recipe) => (
-                <div key={recipe.id} className="bg-gray-50 rounded-lg p-3 lg:p-4 hover:shadow-md transition-shadow">
-                  <img
-                    src={recipe.media && recipe.media.length > 0 ? recipe.media[0].url : "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop"}
-                    alt={recipe.title}
-                    className="w-full h-32 lg:h-48 object-cover rounded-lg mb-3 lg:mb-4"
-                  />
-                  <h3 className="text-base lg:text-lg font-semibold text-gray-800 mb-2">{recipe.title}</h3>
-                  <p className="text-gray-600 text-xs lg:text-sm mb-3 lg:mb-4 line-clamp-3">{recipe.description}</p>
-                  <div className="flex justify-between items-center">
-                    <button
-                      onClick={() => window.location.href = `/recipes/${recipe.id}`}
-                      className="text-rose-600 hover:text-rose-700 font-medium text-sm lg:text-base"
-                    >
-                      Tarifi Gör
-                    </button>
-                    <button
-                      onClick={() => removeFavorite(recipe.id)}
-                      className="text-red-500 hover:text-red-700 text-sm lg:text-base"
-                      title="Favorilerden kaldır"
-                    >
-                      ❌
-                    </button>
-                  </div>
-                </div>
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  authorName={recipe.authorId ? authorNames[recipe.authorId] : ""}
+                  isFavorite={true}
+                  onToggleFavorite={removeFavorite}
+                  showFavoriteButton={true}
+                />
               ))}
             </div>
           )}

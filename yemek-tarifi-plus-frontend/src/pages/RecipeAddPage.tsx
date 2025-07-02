@@ -82,7 +82,7 @@ const RecipeAddPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rose-100 to-orange-100 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-orange-100 via-orange-200 to-orange-300 py-8">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl">
         <div className="text-3xl font-extrabold text-rose-600 text-center mb-6">Tarif Ekle</div>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RecipeService.API.Data;
@@ -12,9 +13,10 @@ using RecipeService.API.Data;
 namespace RecipeService.API.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250701071253_AddRecipeViewTable")]
+    partial class AddRecipeViewTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -85,29 +87,6 @@ namespace RecipeService.API.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Recipes");
-                });
-
-            modelBuilder.Entity("RecipeService.API.Models.RecipeLike", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AnonId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("LikedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RecipeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RecipeLikes");
                 });
 
             modelBuilder.Entity("RecipeService.API.Models.RecipeView", b =>

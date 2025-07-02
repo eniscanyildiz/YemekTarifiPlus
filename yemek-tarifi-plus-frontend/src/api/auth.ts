@@ -41,3 +41,8 @@ export const getFavorites = async (token: string) => {
   });
   return res.data as string[];
 };
+
+export const getUserById = async (id: string) => {
+  const res = await axios.get(`http://localhost:7071/api/Users/${id}`);
+  return res.data;
+};

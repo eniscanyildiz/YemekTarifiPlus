@@ -7,6 +7,13 @@ export interface Recipe {
   category: string;
   mediaUrls: string[];
   media?: RecipeMedia[];
+  
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
+  popularityScore?: number;
+  authorId?: string;
+  createdAt?: string;
 }
 
 export interface RecipeMedia {

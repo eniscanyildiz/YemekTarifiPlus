@@ -22,11 +22,16 @@ namespace RecipeService.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public List<RecipeMedia>? Media { get; set; }
+
+        public int ViewCount { get; set; } = 0;
+        public int LikeCount { get; set; } = 0;
+        public int CommentCount { get; set; } = 0;
+        public double PopularityScore { get; set; } = 0.0;
     }
 
     public class RecipeMedia
     {
         public string Url { get; set; } = null!;
-        public string Type { get; set; } = null!; // "image" veya "video"
+        public string Type { get; set; } = null!;
     }
 }
