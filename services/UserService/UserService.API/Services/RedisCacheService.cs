@@ -41,7 +41,6 @@ namespace UserService.API.Services
             }
             catch (Exception ex)
             {
-                // Log error but don't throw - cache failure shouldn't break the app
                 _logger.Warning(ex, "Cache get error - Key: {Key}, Type: {Type}", key, typeof(T).Name);
                 return default(T);
             }
@@ -59,8 +58,7 @@ namespace UserService.API.Services
                 _logger.Debug("Cache set successfully - Key: {Key}, Type: {Type}", key, typeof(T).Name);
             }
             catch (Exception ex)
-            {
-                // Log error but don't throw - cache failure shouldn't break the app
+            {   
                 _logger.Warning(ex, "Cache set error - Key: {Key}, Type: {Type}", key, typeof(T).Name);
             }
         }

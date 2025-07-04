@@ -13,7 +13,5 @@ namespace AdminPanelService.API.Controllers
         {
             return Ok(new { status = "Admin panel is running and you are authorized." });
         }
-
-        // TODO: Kullanıcı yönetimi, içerik onayı endpointleri buraya eklenebilir
     }
 }

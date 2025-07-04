@@ -45,17 +45,13 @@ export const getRecipeById = async (id: string) => {
 
 export const searchRecipes = async (searchTerm: string): Promise<Recipe[]> => {
   if (!searchTerm.trim()) {
-    // Eğer arama terimi boşsa, tüm tarifleri getir
     return fetchRecipes();
   }
   
-  // Backend'deki filter endpoint'ini kullanarak arama yap
-  // searchTerm parametresi hem başlıkta hem malzemelerde arama yapar
   const response = await axios.get(`http://localhost:7241/api/Recipes/filter?searchTerm=${encodeURIComponent(searchTerm)}`);
   return response.data;
 };
-
-// Popülerlik artırma fonksiyonları
+  
 export const incrementViewCount = async (id: string, anonId?: string) => {
   if (anonId) {
     const response = await axios.post(`http://localhost:7241/api/Recipes/${id}/view`, { anonId });

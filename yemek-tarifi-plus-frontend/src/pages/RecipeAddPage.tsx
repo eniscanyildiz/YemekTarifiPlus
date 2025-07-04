@@ -73,7 +73,6 @@ const RecipeAddPage = () => {
         media,
       });
       alert("Tarif başarıyla eklendi!");
-      // İstersen yönlendirme ekleyebilirsin
     } catch (err) {
       setError("Tarif eklenirken hata oluştu.");
     } finally {

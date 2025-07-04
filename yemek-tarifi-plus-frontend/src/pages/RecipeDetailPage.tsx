@@ -14,7 +14,6 @@ interface Recipe {
   duration: number;
   category: string;
   media?: RecipeMedia[];
-  // Popülerlik bilgileri
   viewCount?: number;
   likeCount?: number;
   commentCount?: number;
@@ -77,20 +76,16 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     if (!id) return;
 
-    // İlk açılışta beğeni durumu kontrolü
     const token = localStorage.getItem("accessToken");
     if (token) {
-      // Girişli kullanıcıda backend'den kontrol
       (async () => {
         try {
           const liked = await isRecipeLiked(id);
           setIsLiked(liked);
         } catch (err) {
-          // Hata olursa disable etme
         }
       })();
     } else {
-      // Girişsiz kullanıcıda localStorage ile kontrol
       if (hasLikedRecipe(id)) {
         setIsLiked(true);
       }
@@ -103,7 +98,6 @@ export default function RecipeDetailPage() {
       const cmts = await getCommentsByRecipeId(id);
       setComments(cmts);
 
-      // Görüntüleme sayısını artır (sadece ilk kez bakıyorsa)
       if (token) {
         try {
           await incrementViewCount(id);
@@ -148,7 +142,6 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     fetchTrendingRecipes(5).then(setTrendingRecipes).catch(() => setTrendingRecipes([]));
     fetchRecipes().then((all) => {
-      // createdAt'e göre sırala, en yeni 5 tanesini al
       const sorted = [...all].sort((a, b) => (b.createdAt && a.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0));
       setLatestRecipes(sorted.slice(0, 5));
     }).catch(() => setLatestRecipes([]));
@@ -205,7 +198,6 @@ export default function RecipeDetailPage() {
   const handleLike = async () => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      // Girişsiz kullanıcı, localStorage ile kontrol
       if (hasLikedRecipe(id!)) {
         alert("Bu tarife zaten beğeni verdiniz.");
         return;
@@ -224,7 +216,6 @@ export default function RecipeDetailPage() {
       return;
     }
 
-    // Girişli kullanıcı
     try {
       await incrementLikeCount(id!);
       setIsLiked(true);
@@ -238,7 +229,6 @@ export default function RecipeDetailPage() {
 
   if (!recipe) return <div>Yükleniyor...</div>;
 
-  // Ana medya (ilk image veya video)
   const mainMedia = recipe.media?.[0];
   const galleryMedia = recipe.media?.slice(1) || [];
 

@@ -10,7 +10,6 @@ using Serilog;
 using StackExchange.Redis;
 using System.Text;
 
-// Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory())
@@ -25,10 +24,8 @@ try
     
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog for the application
     builder.Host.UseSerilog();
 
-    // 1. CORS servisi
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend",
@@ -43,12 +40,10 @@ try
     builder.Services.AddControllers();
 
     builder.Services.AddEndpointsApiExplorer();
-    //SWAGGER
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
 
-        // JWT Authentication için Security Definition ekle
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
             Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -58,7 +53,7 @@ try
             Scheme = "Bearer"
         });
 
-        // Tüm endpointler için security requirement ekle
+
         c.AddSecurityRequirement(new OpenApiSecurityRequirement()
         {
             {
@@ -74,7 +69,6 @@ try
             }
         });
     });
-    //
 
     builder.Services.AddDbContext<RecipeDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -83,17 +77,14 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
-    // Redis Configuration
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
         var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
         return ConnectionMultiplexer.Connect(redisConnectionString!);
     });
 
-    // Cache Service
     builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
-    // JWT ayarları
     var jwtKey = builder.Configuration["JwtSettings:Key"];
     var key = Encoding.UTF8.GetBytes(jwtKey!);
 
@@ -120,16 +111,12 @@ try
             };
         });
 
-    // RabbitMQ Publisher
     builder.Services.AddSingleton<IRabbitMQPublisher, RabbitMQPublisher>();
 
     builder.Services.AddAuthorization();
 
-    builder.Services.AddHttpClient();
-
     var app = builder.Build();
 
-    // Global Exception Middleware
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
     if (app.Environment.IsDevelopment())

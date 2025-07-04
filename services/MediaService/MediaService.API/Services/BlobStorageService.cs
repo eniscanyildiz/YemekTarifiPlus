@@ -65,7 +65,6 @@ namespace MediaService.API.Services
                     HttpHeaders = blobHttpHeaders
                 });
 
-                // SAS token olmadan public URL döndür
                 var publicUrl = blobClient.Uri.ToString();
                 _logger.Information("File uploaded successfully to blob storage - FileName: {FileName}, Public Url: {Url}", fileName, publicUrl);
                 return publicUrl;

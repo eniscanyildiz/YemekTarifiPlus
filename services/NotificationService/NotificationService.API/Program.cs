@@ -3,7 +3,6 @@ using NotificationService.API.Services;
 using NotificationService.API.Middleware;
 using Serilog;
 
-// Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory())
@@ -18,12 +17,9 @@ try
     
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog for the application
     builder.Host.UseSerilog();
 
-    // Add services to the container.
     builder.Services.AddControllers();
-    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
@@ -31,11 +27,9 @@ try
     builder.Services.AddHostedService<RabbitMqConsumer>();
 
     var app = builder.Build();
-
-    // Global Exception Middleware
+            
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();

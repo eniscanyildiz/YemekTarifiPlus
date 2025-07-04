@@ -102,14 +102,12 @@ namespace CommentService.API.Controllers
                 return BadRequest("Content cannot be empty.");
             }
 
-            // Kullanıcı id'yi JWT token'dan alıyoruz
             if (userId == null)
             {
                 _logger.Warning("AddComment failed - User ID not found in token");
                 return Unauthorized();
             }
 
-            // Kullanıcı aynı tarife 5'ten fazla yorum ekleyemesin
             var userCommentCount = (await _repository.GetByRecipeIdAsync(comment.RecipeId)).Count(c => c.UserId == userId);
             if (userCommentCount >= 5)
             {
@@ -122,10 +120,9 @@ namespace CommentService.API.Controllers
                 comment.UserId = userId;
                 comment.CreatedAt = DateTime.UtcNow;
 
-                // Kullanıcı adını UserService'den çek
                 try
                 {
-                    var userServiceUrl = $"http://localhost:7071/api/Users/{userId}"; // UserService portunu kendi ortamına göre ayarla
+                    var userServiceUrl = $"http://localhost:7071/api/Users/{userId}";
                     var response = await _httpClient.GetAsync(userServiceUrl);
                     if (response.IsSuccessStatusCode)
                     {
@@ -148,13 +145,11 @@ namespace CommentService.API.Controllers
 
                 await _repository.AddCommentAsync(comment);
 
-                // Clear related caches
                 await _cacheService.RemoveByPatternAsync($"comments:recipe:{comment.RecipeId}");
                 await _cacheService.RemoveByPatternAsync($"comments:count:{comment.RecipeId}");
                 await _cacheService.RemoveByPatternAsync($"comments:user:{userId}");
                 await _cacheService.RemoveByPatternAsync("comments:popular");
 
-                // RecipeService'e yorum sayısını artırması için istek gönder
                 try
                 {
                     var recipeServiceUrl = $"http://localhost:7241/api/Recipes/{comment.RecipeId}/comment";
@@ -192,7 +187,6 @@ namespace CommentService.API.Controllers
         {
             _logger.Information("Deleting comment - CommentId: {CommentId}", id);
             
-            // Get comment to find recipeId for cache invalidation
             var comment = await _repository.GetByIdAsync(id);
             if (comment == null)
             {
@@ -203,7 +197,6 @@ namespace CommentService.API.Controllers
             try
             {
                 await _repository.DeleteCommentAsync(id);
-                // Clear related caches
                 await _cacheService.RemoveByPatternAsync($"comments:recipe:{comment.RecipeId}");
                 await _cacheService.RemoveByPatternAsync($"comments:count:{comment.RecipeId}");
                 await _cacheService.RemoveByPatternAsync($"comments:user:{comment.UserId}");
@@ -211,7 +204,7 @@ namespace CommentService.API.Controllers
 
                 _logger.Information("Comment deleted successfully - CommentId: {CommentId}, RecipeId: {RecipeId}, UserId: {UserId}", 
                     id, comment.RecipeId, comment.UserId);
-                return NoContent(); // Silme işlemi henüz implement edilmedi
+                return NoContent();
             }
             catch (Exception ex)
             {

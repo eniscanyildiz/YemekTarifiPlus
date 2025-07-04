@@ -15,7 +15,6 @@ function RecipeListPage() {
   const [authorNames, setAuthorNames] = useState<{ [key: string]: string }>({});
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
 
-  // Dinamik arama fonksiyonu
   const performSearch = useCallback(async (term: string) => {
     if (!term.trim()) {
       setLoading(true);
@@ -42,16 +41,14 @@ function RecipeListPage() {
     }
   }, []);
 
-  // Arama terimi değiştiğinde arama yap
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       performSearch(searchTerm);
-    }, 300); // 300ms gecikme ile debounce
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, performSearch]);
 
-  // URL'den gelen arama ve kategori parametresini kontrol et
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search');
     const urlCategory = searchParams.get('category');
@@ -59,12 +56,10 @@ function RecipeListPage() {
       setSearchTerm(urlSearchTerm);
     }
     if (urlCategory) {
-      // Kategori filtresi varsa, tarifleri filtrele
       setRecipes((prev) => prev.filter(r => r.category && r.category.toLowerCase() === urlCategory.toLowerCase()));
     }
   }, [searchParams, searchTerm]);
 
-  // İlk yükleme
   useEffect(() => {
     fetchRecipes()
       .then((data) => {
@@ -92,7 +87,6 @@ function RecipeListPage() {
   }, []);
 
   useEffect(() => {
-    // Tarifler değiştiğinde yazar adlarını çek
     const fetchAuthors = async () => {
       const ids = Array.from(new Set(recipes.map(r => r.authorId).filter(Boolean)));
       const map: { [key: string]: string } = {};
@@ -124,9 +118,7 @@ function RecipeListPage() {
       alert("Favori ekleme/çıkarma başarısız.");
     }
   };
-
-  // Artık client-side filtreleme yapmıyoruz, backend'den gelen sonuçları kullanıyoruz
-
+      
   return (
     <div className="min-h-screen w-full flex justify-center bg-gradient-to-r from-orange-100 via-orange-200 to-orange-300 py-8">
       <div className="w-full max-w-6xl">

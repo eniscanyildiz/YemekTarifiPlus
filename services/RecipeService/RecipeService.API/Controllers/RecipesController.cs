@@ -7,6 +7,7 @@ using RecipeService.API.Messaging.Events;
 using RecipeService.API.Models;
 using RecipeService.API.Services;
 using Serilog;
+using Microsoft.Extensions.Configuration;
 
 namespace RecipeService.API.Controllers
 {
@@ -18,13 +19,16 @@ namespace RecipeService.API.Controllers
         private readonly IRabbitMQPublisher _publisher;
         private readonly ICacheService _cacheService;
         private readonly Serilog.ILogger _logger;
+        private readonly HuggingFaceService _hfService;
 
-        public RecipesController(RecipeDbContext context, IRabbitMQPublisher publisher, ICacheService cacheService)
+        public RecipesController(RecipeDbContext context, IRabbitMQPublisher publisher, ICacheService cacheService, IConfiguration configuration)
         {
             _context = context;
             _publisher = publisher;
             _cacheService = cacheService;
             _logger = Log.ForContext<RecipesController>();
+            var apiKey = configuration["DeepSeek:ApiKey"];
+            _hfService = new HuggingFaceService(apiKey);
         }
 
         [HttpGet]
@@ -32,7 +36,6 @@ namespace RecipeService.API.Controllers
         {
             _logger.Information("Getting all recipes");
             
-            // Try to get from cache first
             var cacheKey = "recipes:all";
             var cachedRecipes = await _cacheService.GetAsync<List<Recipe>>(cacheKey);
             
@@ -42,10 +45,8 @@ namespace RecipeService.API.Controllers
                 return Ok(cachedRecipes);
             }
 
-            // If not in cache, get from database
             var recipes = await _context.Recipes.ToListAsync();
             
-            // Store in cache for 30 minutes
             await _cacheService.SetAsync(cacheKey, recipes);
             
             _logger.Information("Retrieved {Count} recipes from database and cached", recipes.Count);
@@ -76,11 +77,9 @@ namespace RecipeService.API.Controllers
             if (maxDuration.HasValue)
                 query = query.Where(r => r.Duration <= maxDuration.Value);
 
-            // ingredient parametresiyle filtreleme (veritabanında, sadece tam eşleşme için)
             if (!string.IsNullOrEmpty(ingredient))
                 query = query.Where(r => r.Ingredients.Any(i => i.ToLower() == ingredient.ToLower()));
 
-            // searchTerm ile başlık ve kategori araması (veritabanında)
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 var searchLower = searchTerm.ToLower();
@@ -92,7 +91,6 @@ namespace RecipeService.API.Controllers
 
             var filteredRecipes = await query.ToListAsync();
 
-            // searchTerm ile malzeme aramasını bellekte yap
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 var searchLower = searchTerm.ToLower();
@@ -138,7 +136,6 @@ namespace RecipeService.API.Controllers
                 _context.Recipes.Add(recipe);
                 await _context.SaveChangesAsync();
 
-                // Clear related caches
                 await _cacheService.RemoveByPatternAsync("recipes:*");
 
                 var newEvent = new NewRecipeCreated
@@ -166,7 +163,6 @@ namespace RecipeService.API.Controllers
         {
             _logger.Information("Getting recipe by ID: {RecipeId}", id);
             
-            // Try to get from cache first
             var cacheKey = $"recipes:detail:{id}";
             var cachedRecipe = await _cacheService.GetAsync<Recipe>(cacheKey);
             
@@ -176,7 +172,6 @@ namespace RecipeService.API.Controllers
                 return Ok(cachedRecipe);
             }
 
-            // If not in cache, get from database
             var recipe = await _context.Recipes.FindAsync(id);
             if (recipe == null)
             {
@@ -184,7 +179,6 @@ namespace RecipeService.API.Controllers
                 return NotFound();
             }
             
-            // Store in cache for 30 minutes
             await _cacheService.SetAsync(cacheKey, recipe);
             
             _logger.Information("Retrieved recipe from database and cached - RecipeId: {RecipeId}, Title: {Title}", id, recipe.Title);
@@ -208,7 +202,6 @@ namespace RecipeService.API.Controllers
                 _context.Recipes.Remove(recipe);
                 await _context.SaveChangesAsync();
                 
-                // Clear related caches
                 await _cacheService.RemoveByPatternAsync("recipes:*");
                 
                 _logger.Information("Recipe deleted successfully - RecipeId: {RecipeId}, Title: {Title}", id, recipe.Title);
@@ -225,8 +218,7 @@ namespace RecipeService.API.Controllers
         public async Task<IActionResult> GetTrendingRecipes([FromQuery] int limit = 6)
         {
             _logger.Information("Getting trending recipes - Limit: {Limit}", limit);
-            
-            // Try to get from cache first
+
             var cacheKey = $"recipes:trending:{limit}";
             var cachedRecipes = await _cacheService.GetAsync<List<Recipe>>(cacheKey);
             
@@ -236,14 +228,12 @@ namespace RecipeService.API.Controllers
                 return Ok(cachedRecipes);
             }
 
-            // If not in cache, get from database
             var trendingRecipes = await _context.Recipes
                 .OrderByDescending(r => r.PopularityScore)
                 .ThenByDescending(r => r.CreatedAt)
                 .Take(limit)
                 .ToListAsync();
             
-            // Store in cache for 15 minutes (trending data changes more frequently)
             await _cacheService.SetAsync(cacheKey, trendingRecipes, TimeSpan.FromMinutes(15));
             
             _logger.Information("Retrieved {Count} trending recipes from database and cached", trendingRecipes.Count);
@@ -251,7 +241,7 @@ namespace RecipeService.API.Controllers
         }
 
         [HttpPost("{id}/view")]
-        public async Task<IActionResult> IncrementViewCount(Guid id, [FromBody] ViewRequestDto? viewRequest)
+        public async Task<IActionResult> IncrementViewCount(Guid id)
         {
             _logger.Information("Incrementing view count for recipe - RecipeId: {RecipeId}", id);
             var recipe = await _context.Recipes.FindAsync(id);
@@ -267,13 +257,8 @@ namespace RecipeService.API.Controllers
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 userId = User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-            }
-            else if (viewRequest != null && !string.IsNullOrEmpty(viewRequest.AnonId))
-            {
-                anonId = viewRequest.AnonId;
-            }
+            }   
 
-            // Aynı kullanıcı veya anonId daha önce bu tarife bakmış mı?
             bool alreadyViewed = await _context.RecipeViews.AnyAsync(rv => rv.RecipeId == id && (rv.UserId == userId || rv.AnonId == anonId));
             if (alreadyViewed)
             {
@@ -281,7 +266,6 @@ namespace RecipeService.API.Controllers
                 return Ok(new { ViewCount = recipe.ViewCount, PopularityScore = recipe.PopularityScore });
             }
 
-            // Yeni görüntüleme kaydı ekle
             var view = new RecipeView
             {
                 RecipeId = id,
@@ -293,7 +277,6 @@ namespace RecipeService.API.Controllers
             await UpdatePopularityScore(recipe);
             await _context.SaveChangesAsync();
 
-            // Clear related caches
             await _cacheService.RemoveByPatternAsync("recipes:*");
 
             _logger.Information("View count incremented for recipe - RecipeId: {RecipeId}, New ViewCount: {ViewCount}", id, recipe.ViewCount);
@@ -301,7 +284,7 @@ namespace RecipeService.API.Controllers
         }
 
         [HttpPost("{id}/like")]
-        public async Task<IActionResult> IncrementLikeCount(Guid id, [FromBody] LikeRequestDto? likeRequest)
+        public async Task<IActionResult> IncrementLikeCount(Guid id)
         {
             _logger.Information("Incrementing like count for recipe - RecipeId: {RecipeId}", id);
             var recipe = await _context.Recipes.FindAsync(id);
@@ -311,39 +294,36 @@ namespace RecipeService.API.Controllers
                 return NotFound();
             }
 
-            string? userId = null;
-            string? anonId = null;
-
-            if (User.Identity != null && User.Identity.IsAuthenticated)
+            if (User.Identity == null || !User.Identity.IsAuthenticated)
             {
-                userId = User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-            }
-            else if (likeRequest != null && !string.IsNullOrEmpty(likeRequest.AnonId))
-            {
-                anonId = likeRequest.AnonId;
+                _logger.Warning("Like attempt without authentication - RecipeId: {RecipeId}", id);
+                return Unauthorized("Giriş yapmanız gerekiyor.");
             }
 
-            // Aynı kullanıcı veya anonId daha önce bu tarife beğeni bırakmış mı?
-            bool alreadyLiked = await _context.RecipeLikes.AnyAsync(rl => rl.RecipeId == id && (rl.UserId == userId || rl.AnonId == anonId));
+            var userId = User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.Warning("User ID not found in token");
+                return Unauthorized("Giriş yapmanız gerekiyor.");
+            }
+
+            bool alreadyLiked = await _context.RecipeLikes.AnyAsync(rl => rl.RecipeId == id && rl.UserId == userId);
             if (alreadyLiked)
             {
-                _logger.Information("Like already counted for this user/anon - RecipeId: {RecipeId}, UserId: {UserId}, AnonId: {AnonId}", id, userId, anonId);
+                _logger.Information("Like already counted for this user - RecipeId: {RecipeId}, UserId: {UserId}", id, userId);
                 return Ok(new { LikeCount = recipe.LikeCount, PopularityScore = recipe.PopularityScore });
             }
 
-            // Yeni beğeni kaydı ekle
             var like = new RecipeLike
             {
                 RecipeId = id,
-                UserId = userId,
-                AnonId = anonId
+                UserId = userId
             };
             _context.RecipeLikes.Add(like);
             recipe.LikeCount++;
             await UpdatePopularityScore(recipe);
             await _context.SaveChangesAsync();
 
-            // Clear related caches
             await _cacheService.RemoveByPatternAsync("recipes:*");
 
             _logger.Information("Like count incremented for recipe - RecipeId: {RecipeId}, New LikeCount: {LikeCount}", id, recipe.LikeCount);
@@ -366,7 +346,6 @@ namespace RecipeService.API.Controllers
             await UpdatePopularityScore(recipe);
             await _context.SaveChangesAsync();
             
-            // Clear related caches
             await _cacheService.RemoveByPatternAsync("recipes:*");
             
             _logger.Information("Comment count incremented for recipe - RecipeId: {RecipeId}, New CommentCount: {CommentCount}", id, recipe.CommentCount);
@@ -374,39 +353,30 @@ namespace RecipeService.API.Controllers
         }
 
         [HttpPost("{id}/isliked")]
-        public async Task<IActionResult> IsRecipeLiked(Guid id, [FromBody] LikeRequestDto? likeRequest)
+        public async Task<IActionResult> IsRecipeLiked(Guid id)
         {
-            string? userId = null;
-            string? anonId = null;
+            if (User.Identity == null || !User.Identity.IsAuthenticated)
+                return Ok(new { liked = false });
 
-            if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                userId = User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-            }
-            else if (likeRequest != null && !string.IsNullOrEmpty(likeRequest.AnonId))
-            {
-                anonId = likeRequest.AnonId;
-            }
+            var userId = User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Ok(new { liked = false });
 
-            bool alreadyLiked = await _context.RecipeLikes.AnyAsync(rl => rl.RecipeId == id && (rl.UserId == userId || rl.AnonId == anonId));
+            bool alreadyLiked = await _context.RecipeLikes.AnyAsync(rl => rl.RecipeId == id && rl.UserId == userId);
             return Ok(new { liked = alreadyLiked });
         }
 
         private async Task UpdatePopularityScore(Recipe recipe)
         {
-            // Popülerlik skoru hesaplama: (Görüntüleme * 0.1) + (Beğeni * 2) + (Yorum * 3)
-            // Bu formül beğeni ve yorumları daha ağırlıklı yapar
             recipe.PopularityScore = (recipe.ViewCount * 0.1) + (recipe.LikeCount * 2) + (recipe.CommentCount * 3);
         }
 
-        public class ViewRequestDto
+        [HttpPost("suggest-title")]
+        public async Task<IActionResult> SuggestTitle([FromBody] string description)
         {
-            public string? AnonId { get; set; }
-        }
-
-        public class LikeRequestDto
-        {
-            public string? AnonId { get; set; }
+            var prompt = $"Bir yemek tarifi açıklaması: {description}\nBuna uygun yaratıcı bir başlık öner: ";
+            var suggestion = await _hfService.GenerateTextAsync(prompt);
+            return Ok(new { title = suggestion });
         }
     }
 }

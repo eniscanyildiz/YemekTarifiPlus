@@ -17,10 +17,8 @@ try
     
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog for the application
     builder.Host.UseSerilog();
 
-    // 1. CORS servisi
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend",
@@ -37,24 +35,19 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
-    // Add services to the container.
     builder.Services.AddSingleton<BlobStorageService>();
 
     var app = builder.Build();
 
-    // Global Exception Middleware
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
     app.UseCors("AllowFrontend");
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
     }
-
-    //app.UseHttpsRedirection();
 
     app.UseAuthorization();
 

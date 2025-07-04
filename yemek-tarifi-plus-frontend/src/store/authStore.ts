@@ -49,6 +49,10 @@ export const useAuthStore = create<AuthState>((set) => {
     },
     logout: () => {
       localStorage.removeItem("accessToken");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("likedRecipes");
+      localStorage.removeItem("anonId");
+      localStorage.removeItem("viewedRecipes");
       set({ token: null, isLoggedIn: false, email: null });
     },
   };

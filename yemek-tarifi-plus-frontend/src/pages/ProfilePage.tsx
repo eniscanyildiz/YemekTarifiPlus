@@ -25,7 +25,6 @@ const ProfilePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Favori tarifler değiştiğinde yazar adlarını çek
     const fetchAuthors = async () => {
       const ids = Array.from(new Set(favorites.map(r => r.authorId).filter(Boolean)));
       const map: { [key: string]: string } = {};
@@ -46,7 +45,6 @@ const ProfilePage: React.FC = () => {
     try {
       if (!token) return;
       
-      // JWT'den userId'yi çıkar
       const decoded = JSON.parse(atob(token.split('.')[1]));
       const userId = decoded.nameid || decoded.sub;
       
@@ -68,13 +66,11 @@ const ProfilePage: React.FC = () => {
       
       console.log("Favori tarif ID'leri:", response.data);
       
-      // Favori tariflerin detaylarını al
       const favoriteRecipes = await Promise.all(
         response.data.map(async (recipeId: string) => {
           try {
             const recipeResponse = await axios.get(`http://localhost:7241/api/Recipes/${recipeId}`);
             const r = recipeResponse.data;
-            // media tipini RecipeMedia ile uyumlu hale getir
             const safeMedia = ((r.media || []).map((m: any) => ({
               url: m.url,
               type: m.type === "image" || m.type === "video" ? m.type as "image" | "video" : "image"

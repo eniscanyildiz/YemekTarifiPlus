@@ -17,7 +17,7 @@ function RegisterPage() {
       return;
     }
     setError("");
-    try {
+    try {     
       await registerUser({ email, password, firstName, lastName });
       alert("Kayıt başarılı! Giriş yapabilirsiniz.");
       navigate("/login");

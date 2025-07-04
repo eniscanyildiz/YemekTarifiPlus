@@ -26,12 +26,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const trendingScrollRef = React.useRef<HTMLDivElement>(null);
   const [aiPrompt, setAiPrompt] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiMatchedRecipes, setAiMatchedRecipes] = useState<Recipe[]>([]);
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
 
-  // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -44,7 +39,6 @@ const HomePage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Dinamik arama fonksiyonu
   const performSearch = useCallback(async (term: string) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -64,11 +58,10 @@ const HomePage = () => {
     }
   }, []);
 
-  // Arama terimi değiştiğinde arama yap
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       performSearch(searchTerm);
-    }, 300); // 300ms gecikme ile debounce
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, performSearch]);
@@ -84,7 +77,6 @@ const HomePage = () => {
         ]);
         setRecipes(recipesData);
         setTrendingRecipes(trendingData);
-        // Author ad-soyadlarını çek (trend ve son eklenenler için birleştir)
         const allAuthorIds = Array.from(new Set([
           ...trendingData.map(r => r.authorId),
           ...recipesData.slice(-50).map(r => r.authorId)
@@ -98,8 +90,8 @@ const HomePage = () => {
             authorMap[id!] = "";
           }
         }));
-        setTrendingAuthors(authorMap); // trend kartlar için
-        setLatestAuthors(authorMap);   // son eklenenler için
+        setTrendingAuthors(authorMap);
+        setLatestAuthors(authorMap);
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -117,19 +109,9 @@ const HomePage = () => {
     el.scrollBy({ left: dir === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
   };
 
-  const handleAiSuggest = async () => {
-    setAiLoading(true);
-    setAiError(null);
-    setAiMatchedRecipes([]);
-    setAiSuggestions([]);
-    try {
-      const res = await axios.post("/api/AI/suggest", { prompt: aiPrompt });
-      setAiMatchedRecipes(res.data.matchedRecipes || []);
-      setAiSuggestions(res.data.spoonacularSuggestions || []);
-    } catch (err: any) {
-      setAiError(err?.response?.data?.message || "Bir hata oluştu.");
-    } finally {
-      setAiLoading(false);
+  const handleAiSuggest = () => {
+    if (aiPrompt.trim()) {
+      navigate(`/ai-recipes?prompt=${encodeURIComponent(aiPrompt)}`);
     }
   };
 
@@ -161,38 +143,15 @@ const HomePage = () => {
                     <button
                       className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded w-full"
                       onClick={handleAiSuggest}
-                      disabled={aiLoading || !aiPrompt.trim()}
+                      disabled={!aiPrompt.trim()}
                     >
-                      {aiLoading ? "Yükleniyor..." : "Neler Yapabilirim?"}
+                      Neler Yapabilirim?
                     </button>
                   </div>
-                  <div className="mt-4 w-full">
-                    {aiError && <div className="text-red-500 mb-2">{aiError}</div>}
-                    {aiMatchedRecipes.length > 0 && (
-                      <div className="mb-4">
-                        <div className="font-bold text-orange-600 mb-1">Sitedeki Benzer Tarifler</div>
-                        <ul className="list-disc pl-5">
-                          {aiMatchedRecipes.map(r => (
-                            <li key={r.id}>
-                              <Link to={`/recipes/${r.id}`} className="text-blue-600 hover:underline">{r.title}</Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {aiSuggestions.length > 0 && (
-                      <div>
-                        <div className="font-bold text-orange-600 mb-1">AI (Spoonacular) Önerileri</div>
-                        <ul className="list-disc pl-5">
-                          {aiSuggestions.map((s, i) => (
-                            <li key={s.id || i} className="flex items-center gap-2">
-                              {s.image && <img src={s.image} alt={s.title} className="w-10 h-10 object-cover rounded" />}
-                              <span>{s.title}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                  <div className="mt-4 w-full text-center">
+                    <p className="text-sm text-gray-600">
+                      AI asistanına sorun, size özel tarifler önersin!
+                    </p>
                   </div>
                 </div>
               </div>

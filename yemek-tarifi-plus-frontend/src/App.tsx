@@ -9,6 +9,7 @@ import RecipeAddPage from './pages/RecipeAddPage';
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import RecipeAIPage from "./pages/RecipeAIPage";
 import React from "react";
 import Footer from './components/Footer';
 
@@ -27,6 +28,7 @@ function App() {
             <Route path="/recipes/add" element={<ProtectedRoute><RecipeAddPage /></ProtectedRoute>} />
             <Route path="/recipes/:id" element={<RecipeDetailPage />} />
             <Route path="/recipes" element={<RecipeListPage />} />
+            <Route path="/ai-recipes" element={<RecipeAIPage />} />
           </Routes>
         </div>
       </div>

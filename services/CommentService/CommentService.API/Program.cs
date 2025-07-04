@@ -26,10 +26,8 @@ try
     
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog for the application
     builder.Host.UseSerilog();
 
-    // 1. CORS servisi
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend",
@@ -41,26 +39,21 @@ try
             });
     });
 
-    // MongoDB config
     builder.Services.Configure<MongoSettings>(
         builder.Configuration.GetSection("MongoSettings"));
     builder.Services.AddSingleton(sp =>
         sp.GetRequiredService<IOptions<MongoSettings>>().Value);
 
-    // Repository
     builder.Services.AddSingleton<CommentRepository>();
 
-    // Redis Configuration
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
         var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
         return ConnectionMultiplexer.Connect(redisConnectionString!);
     });
 
-    // Cache Service
     builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
-    // JWT Authentication
     var jwtKey = builder.Configuration["JwtSettings:Key"];
     var key = Encoding.UTF8.GetBytes(jwtKey!);
 
@@ -91,7 +84,6 @@ try
 
     builder.Services.AddEndpointsApiExplorer();
 
-    //SWAGGER
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
@@ -122,19 +114,15 @@ try
             }
         });
     });
-    //
 
-    //PUBLISHER
     builder.Services.AddSingleton<CommentEventPublisher>();
 
     var app = builder.Build();
 
-    // Global Exception Middleware
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
     app.UseCors("AllowFrontend");
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();

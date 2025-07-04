@@ -54,7 +54,6 @@ namespace UserService.API.Controllers
 
                 await _userRepository.InsertAsync(user);
                 
-                // Clear user-related caches
                 await _cacheService.RemoveByPatternAsync("users:*");
                 
                 _logger.Information("User registered successfully - UserId: {UserId}, Email: {Email}", user.Id, user.Email);
@@ -83,7 +82,6 @@ namespace UserService.API.Controllers
             {
                 var token = JwtHelper.GenerateJwtToken(user.Id, user.Email, _configuration["JwtSettings:Key"]!);
                 
-                // Cache the token for 30 minutes
                 var cacheKey = $"users:token:{user.Id}";
                 await _cacheService.SetAsync(cacheKey, token, TimeSpan.FromMinutes(30));
                 
@@ -110,7 +108,6 @@ namespace UserService.API.Controllers
 
             _logger.Information("Getting favorites for user - UserId: {UserId}", userId);
 
-            // Try to get from cache first
             var cacheKey = $"users:favorites:{userId}";
             var cachedFavorites = await _cacheService.GetAsync<List<string>>(cacheKey);
             
@@ -120,7 +117,6 @@ namespace UserService.API.Controllers
                 return Ok(cachedFavorites);
             }
 
-            // If not in cache, get from database
             var user = await _userRepository.GetUserByIdAsync(userId);
             if (user == null)
             {
@@ -130,7 +126,6 @@ namespace UserService.API.Controllers
 
             user.Favorites ??= new List<string>();
             
-            // Store in cache for 30 minutes
             await _cacheService.SetAsync(cacheKey, user.Favorites);
             
             _logger.Information("Retrieved favorites from database and cached - UserId: {UserId}, Count: {Count}", userId, user.Favorites.Count);
@@ -175,7 +170,6 @@ namespace UserService.API.Controllers
             {
                 await _userRepository.UpdateUserAsync(user);
                 
-                // Clear user-related caches
                 await _cacheService.RemoveByPatternAsync($"users:favorites:{userId}");
                 await _cacheService.RemoveByPatternAsync($"users:profile:{userId}");
 
@@ -226,7 +220,6 @@ namespace UserService.API.Controllers
             user.FirstName = updatedUser.FirstName;
             user.LastName = updatedUser.LastName;
             user.Email = updatedUser.Email;
-            // Şifre güncellemesi gerekiyorsa ekleyebilirsin
 
             await _userRepository.UpdateUserAsync(user);
             return Ok(new {

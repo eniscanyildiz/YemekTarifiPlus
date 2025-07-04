@@ -34,7 +34,6 @@ namespace UserService.API.Controllers
 
             _logger.Information("Getting profile for user - UserId: {UserId}, Email: {Email}", userId, email);
 
-            // Try to get from cache first
             var cacheKey = $"users:profile:{userId}";
             var cachedProfile = await _cacheService.GetAsync<object>(cacheKey);
             
@@ -44,7 +43,6 @@ namespace UserService.API.Controllers
                 return Ok(cachedProfile);
             }
 
-            // If not in cache, create profile object
             var profile = new
             {
                 userId,
@@ -52,7 +50,6 @@ namespace UserService.API.Controllers
                 message = "JWT doğrulandı, hoş geldiniz!"
             };
             
-            // Store in cache for 30 minutes
             await _cacheService.SetAsync(cacheKey, profile);
             
             _logger.Information("Created profile and cached - UserId: {UserId}, Email: {Email}", userId, email);
